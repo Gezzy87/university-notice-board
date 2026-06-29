@@ -1,0 +1,227 @@
+// University Notice Board & Events — Prisma schema
+// Datasource: PostgreSQL (Supabase/Neon in production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+enum RsvpStatus {
+  GOING
+  INTERESTED
+}
+
+// ---------------------------------------------------------------------------
+// Auth models (Better Auth core tables + our custom user fields)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  // --- custom application fields ---
+  role          Role     @default(STUDENT)
+  department    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Better Auth relations
+  sessions Session[]
+  accounts Account[]
+
+  // Application relations
+  notices   Notice[]   @relation("NoticeAuthor")
+  events    Event[]    @relation("EventOrganizer")
+  rsvps     Rsvp[]
+  bookmarks Bookmark[]
+  comments  Comment[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+// ---------------------------------------------------------------------------
+// Domain models
+// ---------------------------------------------------------------------------
+
+model Category {
+  id    String @id @default(cuid())
+  name  String @unique
+  color String // hex value for the colored chip
+
+  notices Notice[]
+  events  Event[]
+
+  @@map("category")
+}
+
+model Notice {
+  id          String    @id @default(cuid())
+  title       String
+  body        String // rich text (HTML from Tiptap)
+  pinned      Boolean   @default(false)
+  publishedAt DateTime  @default(now())
+  expiresAt   DateTime?
+
+  authorId   String
+  author     User     @relation("NoticeAuthor", fields: [authorId], references: [id])
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  attachments Attachment[]
+  bookmarks   Bookmark[]
+  comments    Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pinned, publishedAt])
+  @@index([categoryId])
+  @@map("notice")
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String // rich text (HTML from Tiptap)
+  location    String
+  startsAt    DateTime
+  endsAt      DateTime
+  capacity    Int? // null = unlimited
+
+  organizerId String
+  organizer   User     @relation("EventOrganizer", fields: [organizerId], references: [id])
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  attachments Attachment[]
+  rsvps       Rsvp[]
+  bookmarks   Bookmark[]
+  comments    Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startsAt])
+  @@index([categoryId])
+  @@map("event")
+}
+
+model Rsvp {
+  id        String     @id @default(cuid())
+  status    RsvpStatus @default(GOING)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, eventId]) // one RSVP per user per event
+  @@index([eventId])
+  @@map("rsvp")
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  noticeId  String?
+  notice    Notice?  @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  eventId   String?
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, noticeId])
+  @@unique([userId, eventId])
+  @@map("bookmark")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  noticeId  String?
+  notice    Notice?  @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  eventId   String?
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([noticeId])
+  @@index([eventId])
+  @@map("comment")
+}
+
+model Attachment {
+  id       String  @id @default(cuid())
+  url      String
+  filename String
+  mimeType String
+  size     Int
+  noticeId String?
+  notice   Notice? @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  eventId  String?
+  event    Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("attachment")
+}
