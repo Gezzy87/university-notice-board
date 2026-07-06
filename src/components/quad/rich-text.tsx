@@ -1,15 +1,22 @@
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 import { cn } from "@/lib/utils";
 
-// Whitelist limited to what the Tiptap editor can produce. DOMPurify also
-// strips dangerous URI schemes (e.g. javascript:) from href by default.
-const SANITIZE_CONFIG = {
-  ALLOWED_TAGS: [
+// Whitelist limited to what the Tiptap editor can produce. sanitize-html is a
+// pure-Node sanitizer (no jsdom / browser DOM), so it works cleanly in
+// serverless environments where isomorphic-dompurify's jsdom dependency fails
+// to bundle. Only these tags/attrs/schemes survive; everything else is dropped.
+const SANITIZE_CONFIG: sanitizeHtml.IOptions = {
+  allowedTags: [
     "p", "br", "strong", "b", "em", "i", "u", "s",
     "ul", "ol", "li", "a", "h1", "h2", "h3", "blockquote", "code", "pre",
   ],
-  ALLOWED_ATTR: ["href", "target", "rel"],
-  ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|\/|#)/i,
+  allowedAttributes: {
+    a: ["href", "target", "rel"],
+  },
+  allowedSchemes: ["http", "https", "mailto"],
+  // Drop the contents of any disallowed tag (e.g. <script>...</script>) rather
+  // than leaving the inner text behind.
+  disallowedTagsMode: "discard",
 };
 
 /**
@@ -23,7 +30,7 @@ export function RichText({
   html: string;
   className?: string;
 }) {
-  const clean = DOMPurify.sanitize(html, SANITIZE_CONFIG);
+  const clean = sanitizeHtml(html, SANITIZE_CONFIG);
   return (
     <div
       className={cn(
