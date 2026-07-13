@@ -274,6 +274,49 @@ export async function getDashboardData() {
   };
 }
 
+export type ActivityItem = {
+  id: string;
+  type: "notice" | "event";
+  title: string;
+  createdAt: string; // ISO
+  href: string;
+};
+
+/** Most recently created notices + events, newest first, for the dashboard bell. */
+export async function getRecentActivity(): Promise<ActivityItem[]> {
+  const [notices, events] = await Promise.all([
+    prisma.notice.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: { id: true, title: true, createdAt: true },
+    }),
+    prisma.event.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: { id: true, title: true, createdAt: true },
+    }),
+  ]);
+
+  return [
+    ...notices.map((n) => ({
+      id: n.id,
+      type: "notice" as const,
+      title: n.title,
+      createdAt: n.createdAt.toISOString(),
+      href: `/notices/${n.id}`,
+    })),
+    ...events.map((e) => ({
+      id: e.id,
+      type: "event" as const,
+      title: e.title,
+      createdAt: e.createdAt.toISOString(),
+      href: `/events/${e.id}`,
+    })),
+  ]
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, 8);
+}
+
 /** Recent comments for moderation. */
 export async function getModerationComments() {
   const comments = await prisma.comment.findMany({

@@ -216,3 +216,17 @@
   background: linear-gradient(90deg, #1c2030 25%, #262b3d 37%, #1c2030 63%);
   background-size: 760px 100%;
 }
+
+/* Notification bell swing — used when there are new notices/events */
+@keyframes bell-wiggle {
+  0%, 50%, 100% { transform: rotate(0); }
+  10%, 30% { transform: rotate(-11deg); }
+  20%, 40% { transform: rotate(11deg); }
+}
+.animate-bell {
+  animation: bell-wiggle 1.4s ease-in-out infinite;
+  transform-origin: top center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-bell { animation: none; }
+}

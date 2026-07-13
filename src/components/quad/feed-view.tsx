@@ -4,7 +4,6 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
 import {
-  Bell,
   ChevronLeft,
   ChevronRight,
   LogIn,
@@ -12,9 +11,11 @@ import {
   Search,
 } from "lucide-react";
 import type { EventItem, FeedItem } from "@/lib/mock";
+import type { ActivityItem } from "@/lib/queries";
 import { categoryDot, categoryGradient } from "@/lib/categories";
 import { CategoryChip } from "./category-chip";
 import { BookmarkButton } from "./bookmark-button";
+import { NotificationBell } from "./notification-bell";
 import { QuadLogo } from "@/components/quad-logo";
 import { InitialAvatar } from "./initial-avatar";
 import { useIsAuthenticated } from "./auth-context";
@@ -239,10 +240,12 @@ export function FeedView({
   items,
   categories,
   userName,
+  recentActivity,
 }: {
   items: FeedItem[];
   categories: string[];
   userName?: string;
+  recentActivity: ActivityItem[];
 }) {
   const authed = useIsAuthenticated();
   const [category, setCategory] = useState("All");
@@ -287,35 +290,31 @@ export function FeedView({
             Quad
           </span>
         </div>
-        {authed ? (
-          <div className="flex items-center gap-1">
-            <Link
-              href="/notifications"
-              className="text-muted-foreground hover:bg-surface-2 relative grid size-9 place-items-center rounded-full"
-              aria-label="Notifications"
-            >
-              <Bell className="size-[21px]" strokeWidth={1.8} />
-              <span className="bg-danger absolute right-2 top-2 size-2 rounded-full ring-2 ring-[var(--app-bg)]" />
-            </Link>
+        <div className="flex items-center gap-2">
+          <NotificationBell items={recentActivity} />
+          {authed ? (
             <Link href="/profile" aria-label="Profile">
               <InitialAvatar name={userName ?? "You"} size={34} />
             </Link>
-          </div>
-        ) : (
-          <Link
-            href="/login"
-            className="bg-primary text-primary-foreground flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold"
-          >
-            <LogIn className="size-4" strokeWidth={2} />
-            Log in
-          </Link>
-        )}
+          ) : (
+            <Link
+              href="/login"
+              className="bg-primary text-primary-foreground flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold"
+            >
+              <LogIn className="size-4" strokeWidth={2} />
+              Log in
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* desktop header */}
       <div className="hidden items-center justify-between lg:flex">
         <h1 className="font-heading text-[26px] font-bold tracking-[-0.01em]">Feed</h1>
-        <FeedCalendarToggle />
+        <div className="flex items-center gap-2.5">
+          <NotificationBell items={recentActivity} />
+          <FeedCalendarToggle />
+        </div>
       </div>
 
       {/* search */}

@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { AdminShell } from "@/components/quad/admin/admin-shell";
-import { getDashboardData } from "@/lib/queries";
+import { NotificationBell } from "@/components/quad/notification-bell";
+import { getDashboardData, getRecentActivity } from "@/lib/queries";
 
 export default async function AdminDashboardPage() {
-  const { stats, events } = await getDashboardData();
+  const [{ stats, events }, recentActivity] = await Promise.all([
+    getDashboardData(),
+    getRecentActivity(),
+  ]);
 
   const cards = [
     { label: "Total notices", value: stats.totalNotices.toString() },
@@ -16,9 +20,12 @@ export default async function AdminDashboardPage() {
   return (
     <AdminShell>
       <div className="mx-auto w-full max-w-5xl px-4 py-4 lg:px-8 lg:py-7">
-        <h1 className="font-heading text-[26px] font-bold tracking-[-0.01em]">
-          Dashboard
-        </h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-heading text-[26px] font-bold tracking-[-0.01em]">
+            Dashboard
+          </h1>
+          <NotificationBell items={recentActivity} />
+        </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {cards.map((s) => (
